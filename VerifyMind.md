@@ -188,9 +188,9 @@
 
 
 
-**GitHub: \[ссылка будет добавлена]**
+**GitHub: \[https://github.com/astellus08-design/verifymind]**
 
 
 
-**GitVerse: \[ссылка будет добавлена]**
+
 
