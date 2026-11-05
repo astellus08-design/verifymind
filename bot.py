@@ -17,7 +17,9 @@ def get_updates(marker=None, timeout=30):
     params = {"timeout": timeout, "limit": 100}
     if marker:
         params["marker"] = marker
-    r = requests.get(f"{API}/updates", headers=HEADERS, params=params, timeout=timeout + 10)
+    r = requests.get(f"{API}/updates", headers=HEADERS, params=params, timeout=timeout + 10,
+    verify=False,
+    )
     r.raise_for_status()
     return r.json()
 
@@ -29,6 +31,7 @@ def send_message(chat_id, text):
         params={"chat_id": chat_id},
         json={"text": text},
         timeout=30,
+        verify=False,
     )
     r.raise_for_status()
     return r.json()
