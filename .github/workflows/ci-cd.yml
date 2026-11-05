@@ -1,0 +1,78 @@
+name: VerifyMind CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: # Позволяет запускать вручную из вкладки Actions
+
+jobs:
+  # 1. CI: Проверка кода (синтаксис Python)
+  lint:
+    name: Проверка синтаксиса
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Check Python syntax
+        run: |
+          python -m py_compile main.py
+          python -m py_compile bot.py
+          python -m py_compile server.py
+          echo "✅ Синтаксис Python корректен"
+
+  # 2. CD: Сборка и отправка Docker-образа в Docker Hub
+  build-and-push:
+    name: Сборка Docker-образа
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile # Убедитесь, что Dockerfile лежит в корне!
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/verifymind-bot:latest
+
+  # 3. CD: Деплой на виртуальную машину по SSH
+  deploy-to-vm:
+    name: Деплой на VM
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VM via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_IP }}
+          username: ${{ secrets.VM_USER }}
+          password: ${{ secrets.VM_PASSWORD }} # Или используйте key, если настроили SSH-ключи
+          port: ${{ secrets.VM_PORT }}
+          script: |
+            echo "📥 Скачиваем новый образ..."
+            docker pull ${{ secrets.DOCKER_USERNAME }}/verifymind-bot:latest
+            
+            echo "🚀 Перезапускаем контейнер..."
+            # Переходим в папку, где лежит docker-compose.yml на сервере
+            cd /opt/verifymind 
+            
+            # Пересоздаём контейнер из нового образа
+            docker compose pull
+            docker compose up -d --remove-orphans
+            
+            echo "✅ Деплой завершён! Статус контейнеров:"
+            docker compose ps
+            echo "📜 Последние логи:"
+            docker compose logs --tail=10
