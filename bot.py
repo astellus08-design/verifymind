@@ -35,6 +35,8 @@ def send_message(chat_id, text):
 
 
 def main_loop():
+    from keep_alive import keep_alive
+    keep_alive()
     marker = None
     print("Бот запущен, жду сообщения...")
 
